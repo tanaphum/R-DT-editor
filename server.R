@@ -28,18 +28,22 @@ shinyServer(function(input, output) {
     1
     observeEvent(input$x1_cell_edit, {
         info = input$x1_cell_edit
-        str(info)
         i = info$row
         j = info$col
         v = info$value
 
         if(is.null(history$past)){
+        history$future <- NULL
         past <- input$x1_cell_edit
         past$value <-  x[i, j]
         history$past <- past
         history$current <-  input$x1_cell_edit
         }else{
-            if(history$past[[1]] != input$x1_cell_edit[[1]] || history$past[[1]] != input$x1_cell_edit[[1]]){
+            if(!is.null(history$future)){
+                history$future <- NULL
+            }
+            
+            if(history$current[1,1] != input$x1_cell_edit[1,1] || history$current[1,2] != input$x1_cell_edit[1,2]){
                 past <- input$x1_cell_edit
                 past$value <-  x[i, j]
                 history$past <- rbind(history$past,history$current)
@@ -63,9 +67,20 @@ shinyServer(function(input, output) {
     observeEvent(input$undo, {
             req(!is.null(history$past))
         
-            l <- length(history$past[,1])
+            l <- length(history$past[,1]) #col length
+            a <- history$past[l,1]
+            b <- history$past[l,2]
+
+            if(history$past[l,3] == x[a,b]){
+                history$future <- rbind(history$future,history$current,history$past[l,])
+                history$current <- history$past[l-1,]
+                history$past <- history$past[1:(l-1),]
+                l <- length(history$past[,1])
+            }else{
             history$future <- rbind(history$future,history$current)
             history$current <- history$past[l,]
+            }
+            
             
             if(l==1){
                 history$past <- NULL
@@ -84,9 +99,19 @@ shinyServer(function(input, output) {
     observeEvent(input$redo, {
         req(!is.null(history$future))
         
-        l <- length(history$future[,1])
-        history$past <- rbind(history$past,history$current)
-        history$current <- history$future[l,]
+        l <- length(history$future[,1]) #col length
+        a <- history$future[l,1]
+        b <- history$future[l,2]
+        if(history$future[l,3] == x[a,b]){
+            history$past <- rbind(history$past,history$current,history$future[l,])
+            history$current <- history$future[l-1,]
+            history$future <- history$future[1:(l-1),]
+            l <- length(history$future[,1])
+        }else{
+            history$past <- rbind(history$past,history$current)
+            history$current <- history$future[l,]
+        }
+        
         
         if(l==1){
             history$future <- NULL
